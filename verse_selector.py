@@ -12,8 +12,6 @@ class passage_order_error(Exception):
     pass
 
 class passage:
-    # parent class-whole chapter
-    # need to sanitize inputs
     def __init__(self, book, chapter, verse):
         self.book = book
         self.chapter = chapter
@@ -33,14 +31,12 @@ class passage_multiple_verse(passage):
         #error checks
         if len(self.verse_strip) != 2:
             # checks if extra passages inputted
-            print("len")
             raise passage_order_error
         elif self.verse_strip[0].isnumeric() and self.verse_strip[-1].isnumeric():
             if int(self.verse_strip[0]) >= int(self.verse_strip[-1]):
-                # checks if verses are ascending
+                # checks if verses are numbers and ascending
                 raise passage_order_error
         else:
-            print("else")
             raise passage_order_error
         self.verse_start = self.verse_strip[0]
         self.verse_end = self.verse_strip[-1]
@@ -54,7 +50,7 @@ def main_funct():
     """Takes an input and prints out the verse""" 
     while True:
         # Get verse requested or exit, can use multiple inputs
-        book = input("What book are you looking for? Type E to exit.\n")
+        book = input("What book are you looking for? Type E to exit. Type H for history.\n")
         if book.lower() == "e":
             exit()
         elif book.lower() == "h":
@@ -65,6 +61,7 @@ def main_funct():
         
         current = create_passage(book, chapter, verse)
         if current == None:
+            # passage input error on passage
             continue
         if current.output != "":
             # duplicate
@@ -90,7 +87,7 @@ def passage_parse(passage_input: passage, request: json):
         verse_upper = request["book"][0]["chapter"]
         current_verse = int(passage_input.verse_start)
         for verse in range(len(verse_upper)):
-            #print each verse individually
+            # add each verse individually
             verse_lower = verse_upper[str(current_verse)]["verse"]
             passage_input.output += f"{current_verse}: {verse_lower}"
             current_verse += 1
@@ -102,11 +99,11 @@ def passage_parse(passage_input: passage, request: json):
         passage_input.output += f"{passage_input.verse}: {verse_lower}"
         
     elif isinstance(passage_input, passage):
-        #whole chapter-parent
+        #whole chapter-parent class
         verse_upper = request["chapter"]
         current_verse = 1
         for verse in range(len(verse_upper)):
-            #print each verse individually
+            # add each verse individually
             verse_lower = verse_upper[str(current_verse)]["verse"]
             passage_input.output += f"{current_verse}: {verse_lower}"
             current_verse += 1
@@ -121,13 +118,14 @@ def history_check():
             print(f'{previous_passage.book} {previous_passage.chapter}')
 
 def duplicate_check(history_list: list, book: str, chapter: str, verse: str):
-    # description
+    # goes through history_list to see if given input is a duplicate
     for output_index in range(len(history_list)):
         if history_list[output_index].book == book and history_list[output_index].chapter == chapter and history_list[output_index].verse == verse:
             return output_index
     return -1
 
 def create_passage(book: str, chapter: str, verse: str):
+    # creates a passage using given inputs
     results = duplicate_check(history_list, book, chapter, verse)
     if results < 0:
         # unique verse
