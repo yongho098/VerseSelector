@@ -2,9 +2,8 @@ import json
 
 import requests
 
-# get rid of dict?
-history_dict = {}
 history_list = []
+bible_list = []
 url_start = "http://getbible.net/json?passage="
 url_end = "&raw=true&version=kjv"
 
@@ -18,6 +17,13 @@ class passage:
         self.verse = verse
         self.output = ""
         
+    
+    def input_sanitize(self):
+        if self.chapter.isnumeric():
+            pass
+        else:
+            raise passage_order_error   
+    
     def printout(self):
         print(self.output)
         
@@ -25,6 +31,9 @@ class passage_multiple_verse(passage):
     def __init__(self, book, chapter, verse):
         super().__init__(book, chapter, verse)
         # sanitize input
+        
+    
+    def input_sanitize(self):
         self.verse_strip = self.verse.split("-")
         for item in range(len(self.verse_strip)):
             self.verse_strip[item] = self.verse_strip[item].strip()
@@ -45,6 +54,12 @@ class passage_single_verse(passage):
     def __init__(self, book, chapter, verse):
         super().__init__(book, chapter, verse)
         
+    def input_sanitize(self):
+        if self.chapter.isnumeric() and self.verse.isnumeric():
+            pass
+        else:
+            raise passage_order_error   
+        
 
 def main_funct():
     """Takes an input and prints out the verse""" 
@@ -56,9 +71,11 @@ def main_funct():
         elif book.lower() == "h":
             history_check()
             continue
-        chapter = input("What chapter are you looking for?\n")
+        
+        chapter = input("What chapter are you looking for?\n")        
         verse = input("What verses are you looking for?\n")
         
+        # create passage using inputs
         current = create_passage(book, chapter, verse)
         if current == None:
             # passage input error on passage
@@ -74,6 +91,7 @@ def main_funct():
             response = requests.get(url).json()
         except:
             # Input has a mistake
+            history_list.pop()
             print("Invalid input")
             continue
         # parse and save output
@@ -110,8 +128,10 @@ def passage_parse(passage_input: passage, request: json):
             
 def history_check():
     for previous_passage in history_list:
-        if isinstance(previous_passage, passage_multiple_verse) or isinstance(previous_passage, passage_single_verse):
+        if  isinstance(previous_passage, passage_single_verse):
             # verses
+            print(f'{previous_passage.book} {previous_passage.chapter}: {previous_passage.verse} - {previous_passage.output}')
+        elif isinstance(previous_passage, passage_multiple_verse):
             print(f'{previous_passage.book} {previous_passage.chapter}: {previous_passage.verse}')
         else:
             # whole chapter
@@ -131,21 +151,33 @@ def create_passage(book: str, chapter: str, verse: str):
         # unique verse
         if(verse == ""):
             # whole chapter
-            history_dict[f"{book} {chapter} {verse}"] = passage(book, chapter, verse)
-            history_list.append(history_dict[f"{book} {chapter} {verse}"])
+            try:
+                history_list.append(passage(book, chapter, verse))
+                history_list[-1].input_sanitize()
+            except passage_order_error:
+                history_list.pop()
+                print("Passage Input Error")
+                return None
             return history_list[-1]
         else:
             # check if verse or passage 
             if "-" in verse:
                 try:
-                    history_dict[f"{book} {chapter} {verse}"] = passage_multiple_verse(book, chapter, verse)
+                    history_list.append(passage_multiple_verse(book, chapter, verse))
+                    history_list[-1].input_sanitize()
                 except passage_order_error:
-                    print("Passage input error")
+                    history_list.pop()
+                    print("Passage Input error")
                     return None
             else:
                 # single verse
-                history_dict[f"{book} {chapter} {verse}"] = passage_single_verse(book, chapter, verse)
-            history_list.append(history_dict[f"{book} {chapter} {verse}"])
+                try:
+                    history_list.append(passage_single_verse(book, chapter, verse))
+                    history_list[-1].input_sanitize()
+                except passage_order_error:
+                    history_list.pop()
+                    print("Passage Input Error")
+                    return None
             return history_list[-1]
     else:
         # duplicate verse
@@ -154,7 +186,8 @@ def create_passage(book: str, chapter: str, verse: str):
             pass
         else:
             history_list.append(history_list[results])
-        return history_list[results]
+            history_list.pop(results)
+        return history_list[-1]
 
 def create_url(passage_in):
     # creates url based on if looking for whole chapter or verse
