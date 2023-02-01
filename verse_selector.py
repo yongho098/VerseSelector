@@ -10,6 +10,17 @@ url_end = "&raw=true&version=kjv"
 class passage_order_error(Exception):
     pass
 
+class version_validator:
+    def __init__(self, book) -> None:
+        self.book = book
+
+class version_creator:
+    def __init__(self) -> None:
+        self.version = ''
+
+class Display:
+    pass
+
 class passage:
     def __init__(self, book, chapter, verse):
         self.book = book
