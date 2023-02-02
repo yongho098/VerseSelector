@@ -1,212 +1,212 @@
 import json
 
 import requests
+from abc import ABC, abstractmethod
 
-history_list = []
-bible_list = []
-url_start = "http://getbible.net/json?passage="
-url_end = "&raw=true&version=kjv"
+bible_books = ['genesis', 'exodus', 'leviticus', 'numbers', 'deuteronomy', 'joshua', 'judges', 'ruth',
+               '1samuel', '2samuel', '1kings', '2kings', '1chronicles', '2chronicles', 'ezra', 'nehemiah',
+               'job', 'psalms', 'proverbs', 'ecclesiastes', 'songofsolomon', 'isaiah', 'jeremiah', 'lamentations',
+               'ezekiel', 'daniel', 'hosea', 'joel', 'amos', 'obadiah', 'jonah', 'micah', 'nahum', 'habakkuk', 
+               'zephaniah', 'haggai', 'zechariah', 'malachi', 'matthew', 'mark', 'luke', 'john', 'acts', 'romans', 
+               '1corinthians', '2corinthians', 'galatians', 'ephesians', 'philippians', 'colossians', '1thessalonians', 
+               '2thessalonian', '1timothy', '2timothy', 'titus', 'philemon', 'hebrews', 'james', '1peter', '2peter', 
+               '1john', '2john', '3john', 'jude', 'revelation']
+bible_types = ['webapi', 'db', 'text', 'xml', 'json']
 
 class passage_order_error(Exception):
     pass
 
-class version_validator:
-    def __init__(self, book) -> None:
-        self.book = book
+class Parent_bible(ABC):
 
-class version_creator:
-    def __init__(self) -> None:
-        self.version = ''
-
-class Display:
-    pass
-
-class passage:
-    def __init__(self, book, chapter, verse):
+    def __init__(self, book, chapter, verse, bible_type) -> None:
         self.book = book
         self.chapter = chapter
         self.verse = verse
+        self.data = ""
         self.output = ""
+        self.bible_type = bible_type
+        self.validate = version_validator(self.bible_type)
+        self.passage_type = ""
+        self.verse_start = 0
+      
+    def save(self):
+        pass
         
+    def prepare(self):
+        # prepares data for read()
+        pass
+     
+    def read(self):
+        # parses data from prepare()
+        pass
     
-    def input_sanitize(self):
-        if self.chapter.isnumeric():
-            pass
+    def passage_version(self):
+        if(self.verse == ""):
+            # whole chapter
+            self.passage_type = "chapter"
         else:
-            raise passage_order_error   
+            # check if verse or passage 
+            if "-" in self.verse:
+                self.passage_type = "passage"
+            else:
+                # single verse
+                self.passage_type = "verse"
+
+class webapi_bible(Parent_bible):
+    def __init__(self, Parent_bible):
+        super().__init__(Parent_bible.book, Parent_bible.chapter, Parent_bible.verse, Parent_bible.bible_type)
+        
+        self.url_start = "http://getbible.net/json?passage="
+        self.url_end = "&raw=true&version=kjv"
+    
+    def prepare(self):
+        # get raw data
+        if self.passage_type == "passage" or self.passage_type == "verse":
+            # verse/passage
+            url = f"{self.url_start}{self.book} {self.chapter}: {self.verse}{self.url_end}"
+        else:
+            # whole chapter
+            url = f"{self.url_start}{self.book} {self.chapter}{self.url_end}"
+        
+        try:
+            # Use API 
+            self.data = requests.get(url).json()
+        except:
+            # Input has a mistake
+            print("Invalid input")
+            raise passage_order_error
+            
+    def read(self):
+        if self.passage_type == "passage":
+            # multiple verse, assumes verses given are correct during init
+            verse_upper = self.data["book"][0]["chapter"]
+            current_verse = int(self.verse_start)
+            for verse in range(len(verse_upper)):
+                # add each verse individually
+                verse_lower = verse_upper[str(current_verse)]["verse"]
+                self.output += f"{current_verse}: {verse_lower}"
+                current_verse += 1
+        elif self.passage_type == 'verse':
+            #single verse
+            verse_upper = self.data["book"][0]["chapter"]
+            verse_lower = verse_upper[self.verse]["verse"]
+            self.output += f"{self.verse}: {verse_lower}"
+            
+        elif self.passage_type == 'chapter':
+            #whole chapter-parent class
+            verse_upper = self.data["chapter"]
+            current_verse = 1
+            for verse in range(len(verse_upper)):
+                # add each verse individually
+                verse_lower = verse_upper[str(current_verse)]["verse"]
+                self.output += f"{current_verse}: {verse_lower}"
+                current_verse += 1        
+
+class version_validator:
+    # passage parse, verse parse
+    def __init__(self, bible):
+        self.bible = bible
+
+    def passage_prepare(self):
+        self.bible.prepare()
+        
+    def passage_parse(self):
+        self.bible.read()
+
+class version_creator:
+    # create bible type?, return bible
+    def __init__(self, book, chapter, verse, bible_type):
+        try:
+            if bible_type.lower() == 'webapi':
+                self.bible_output =  webapi_bible(Parent_bible(book, chapter, verse, bible_type))
+            # future planned types: db_bible, text_bible, xml_bible, json_bible    
+            else:
+                raise passage_order_error
+        except passage_order_error:
+            print("Bible Type Error")
+            #error check gracefully
+            exit()
+        self.passage_type()
+    
+    def passage_type(self):
+        # set passage type and error check input
+        
+        # check if book in bible
+        book_check = self.bible_output.book.replace(" ", "")
+        book_check = book_check.lower()
+        if book_check not in bible_books:
+            print("Invalid Book Entry")
+            raise passage_order_error
+        
+        if(self.bible_output.verse == ""):
+            # whole chapter
+            if self.bible_output.chapter.isnumeric():
+                pass
+            else:
+                print("Invalid Chapter Entry")
+                raise passage_order_error   
+            self.bible_output.passage_type = "chapter"
+        elif "-" in self.bible_output.verse:
+            # passage
+            verse_strip = self.bible_output.verse.split("-")
+            for item in range(len(verse_strip)):
+                verse_strip[item] = verse_strip[item].strip()
+            #error checks
+            if len(verse_strip) != 2:
+                # checks if extra passages inputted
+                print("Invalid Verse Entry")
+                raise passage_order_error
+            elif verse_strip[0].isnumeric() and verse_strip[-1].isnumeric():
+                if int(verse_strip[0]) >= int(verse_strip[-1]):
+                    # checks if verses are numbers and ascending
+                    print("Invalid Verse Entry")
+                    raise passage_order_error
+            else:
+                print("Invalid Verse Entry")
+                raise passage_order_error
+            self.bible_output.verse_start = verse_strip[0]
+            self.bible_output.passage_type = "passage"
+        else:
+            # single verse
+            if self.bible_output.chapter.isnumeric() and self.bible_output.verse.isnumeric():
+                pass
+            else:
+                print("Invalid Input")
+                raise passage_order_error
+            self.bible_output.passage_type = "verse"      
+    
+class Display():
+    
+    def __init__(self, bible):
+        self.bible = bible
     
     def printout(self):
-        print(self.output)
-        
-class passage_multiple_verse(passage):
-    def __init__(self, book, chapter, verse):
-        super().__init__(book, chapter, verse)
-        # sanitize input
-        
+        print(self.bible.output)
     
-    def input_sanitize(self):
-        self.verse_strip = self.verse.split("-")
-        for item in range(len(self.verse_strip)):
-            self.verse_strip[item] = self.verse_strip[item].strip()
-        #error checks
-        if len(self.verse_strip) != 2:
-            # checks if extra passages inputted
-            raise passage_order_error
-        elif self.verse_strip[0].isnumeric() and self.verse_strip[-1].isnumeric():
-            if int(self.verse_strip[0]) >= int(self.verse_strip[-1]):
-                # checks if verses are numbers and ascending
-                raise passage_order_error
-        else:
-            raise passage_order_error
-        self.verse_start = self.verse_strip[0]
-        self.verse_end = self.verse_strip[-1]
-        
-class passage_single_verse(passage):
-    def __init__(self, book, chapter, verse):
-        super().__init__(book, chapter, verse)
-        
-    def input_sanitize(self):
-        if self.chapter.isnumeric() and self.verse.isnumeric():
-            pass
-        else:
-            raise passage_order_error   
-        
-
-def main_funct():
+def main():
+    
     """Takes an input and prints out the verse""" 
     while True:
         # Get verse requested or exit, can use multiple inputs
-        book = input("What book are you looking for? Type E to exit. Type H for history.\n")
+        book = input("What book are you looking for? Type E to exit.\n")
         if book.lower() == "e":
             exit()
-        elif book.lower() == "h":
-            history_check()
-            continue
         
         chapter = input("What chapter are you looking for?\n")        
         verse = input("What verses are you looking for?\n")
+        bible_type = input("Where do you want the source from? (Currently only webapi)\n")
         
-        # create passage using inputs
-        current = create_passage(book, chapter, verse)
-        if current == None:
-            # passage input error on passage
+        try: 
+            bible = version_creator(book, chapter, verse, bible_type)
+        except passage_order_error:
             continue
-        if current.output != "":
-            # duplicate
-            current.printout()
-            continue
-        
-        url = create_url(current)
+        validator = version_validator(bible.bible_output)
         try:
-            # Use API 
-            response = requests.get(url).json()
-        except:
-            # Input has a mistake
-            history_list.pop()
-            print("Invalid input")
+            validator.passage_prepare()
+        except passage_order_error:
             continue
-        # parse and save output
-        passage_parse(current, response)
-        current.printout()
-        
-def passage_parse(passage_input: passage, request: json):
-    # parse the request and assign to output
-    if isinstance(passage_input, passage_multiple_verse):
-        # multiple verse, assumes verses given are correct during init
-        verse_upper = request["book"][0]["chapter"]
-        current_verse = int(passage_input.verse_start)
-        for verse in range(len(verse_upper)):
-            # add each verse individually
-            verse_lower = verse_upper[str(current_verse)]["verse"]
-            passage_input.output += f"{current_verse}: {verse_lower}"
-            current_verse += 1
+        validator.passage_parse()
+        output = Display(bible.bible_output)
+        output.printout()
 
-    elif isinstance(passage_input, passage_single_verse):
-        #single verse
-        verse_upper = request["book"][0]["chapter"]
-        verse_lower = verse_upper[passage_input.verse]["verse"]
-        passage_input.output += f"{passage_input.verse}: {verse_lower}"
-        
-    elif isinstance(passage_input, passage):
-        #whole chapter-parent class
-        verse_upper = request["chapter"]
-        current_verse = 1
-        for verse in range(len(verse_upper)):
-            # add each verse individually
-            verse_lower = verse_upper[str(current_verse)]["verse"]
-            passage_input.output += f"{current_verse}: {verse_lower}"
-            current_verse += 1
-            
-def history_check():
-    for previous_passage in history_list:
-        if  isinstance(previous_passage, passage_single_verse):
-            # verses
-            print(f'{previous_passage.book} {previous_passage.chapter}: {previous_passage.verse} - {previous_passage.output}')
-        elif isinstance(previous_passage, passage_multiple_verse):
-            print(f'{previous_passage.book} {previous_passage.chapter}: {previous_passage.verse}')
-        else:
-            # whole chapter
-            print(f'{previous_passage.book} {previous_passage.chapter}')
-
-def duplicate_check(history_list: list, book: str, chapter: str, verse: str):
-    # goes through history_list to see if given input is a duplicate
-    for output_index in range(len(history_list)):
-        if history_list[output_index].book == book and history_list[output_index].chapter == chapter and history_list[output_index].verse == verse:
-            return output_index
-    return -1
-
-def create_passage(book: str, chapter: str, verse: str):
-    # creates a passage using given inputs
-    results = duplicate_check(history_list, book, chapter, verse)
-    if results < 0:
-        # unique verse
-        if(verse == ""):
-            # whole chapter
-            try:
-                history_list.append(passage(book, chapter, verse))
-                history_list[-1].input_sanitize()
-            except passage_order_error:
-                history_list.pop()
-                print("Passage Input Error")
-                return None
-            return history_list[-1]
-        else:
-            # check if verse or passage 
-            if "-" in verse:
-                try:
-                    history_list.append(passage_multiple_verse(book, chapter, verse))
-                    history_list[-1].input_sanitize()
-                except passage_order_error:
-                    history_list.pop()
-                    print("Passage Input error")
-                    return None
-            else:
-                # single verse
-                try:
-                    history_list.append(passage_single_verse(book, chapter, verse))
-                    history_list[-1].input_sanitize()
-                except passage_order_error:
-                    history_list.pop()
-                    print("Passage Input Error")
-                    return None
-            return history_list[-1]
-    else:
-        # duplicate verse
-        # only add to list if not at the end
-        if history_list[-1] == history_list[results]:
-            pass
-        else:
-            history_list.append(history_list[results])
-            history_list.pop(results)
-        return history_list[-1]
-
-def create_url(passage_in):
-    # creates url based on if looking for whole chapter or verse
-    if isinstance(passage_in, passage_multiple_verse) or isinstance(passage_in, passage_single_verse):
-        # verse/passage
-        return f"{url_start}{passage_in.book} {passage_in.chapter}: {passage_in.verse}{url_end}"
-    else:
-        # whole chapter
-        return f"{url_start}{passage_in.book} {passage_in.chapter}{url_end}"
-
-main_funct()
+main()
