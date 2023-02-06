@@ -11,7 +11,6 @@ bible_books = ['genesis', 'exodus', 'leviticus', 'numbers', 'deuteronomy', 'josh
                '1corinthians', '2corinthians', 'galatians', 'ephesians', 'philippians', 'colossians', '1thessalonians', 
                '2thessalonian', '1timothy', '2timothy', 'titus', 'philemon', 'hebrews', 'james', '1peter', '2peter', 
                '1john', '2john', '3john', 'jude', 'revelation']
-bible_types = ['webapi', 'db', 'text', 'xml', 'json']
 
 class passage_order_error(Exception):
     pass
@@ -182,6 +181,7 @@ class Display():
     
     def printout(self):
         print(self.bible.output)
+        
     
 def main():
     
