@@ -72,6 +72,7 @@ class version_creator:
     # create bible type?, return bible
     def __init__(self, parsed_passage):
         #condition to check which bible version is
+        # test connection to api
         self.bible_output =  webapi_bible(Parent_bible(parsed_passage[0][0], parsed_passage[0][1], parsed_passage[0][2], parsed_passage[0][3], parsed_passage[0][4]))
         
 class Display():
@@ -88,6 +89,7 @@ def main():
     """Takes an input and prints out the verse""" 
     while True:
         # Get verse requested or exit, can use multiple inputs
+        # fix continous passages
         passage = input("What passage are you looking for? Type E to exit.\n")
         if passage.lower() == "e":
             exit()
