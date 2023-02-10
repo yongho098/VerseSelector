@@ -1,6 +1,5 @@
 import pytest
 import bible_class
-import math
 
 test_passage = [('John', 3, 16, 3, 16)]
 

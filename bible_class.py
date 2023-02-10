@@ -41,7 +41,6 @@ class webapi_bible(Parent_bible):
         try:
             # Use API 
             self.data = requests.get(url).json()
-            print(self.data.status_code)
         except:
             # Input has a mistake
             print("Invalid input")
