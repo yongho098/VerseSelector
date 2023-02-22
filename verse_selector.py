@@ -13,6 +13,7 @@ def main():
             exit()
             
         parsed_passage = scriptures.extract(passage)
+        # print(parsed_passage)
         if len(parsed_passage) == 0:
             print("Invalid passage")
             continue

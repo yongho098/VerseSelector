@@ -1,5 +1,6 @@
 import requests
 from abc import ABC, abstractmethod
+from sql import preparer2
 
 class passage_order_error(Exception):
     pass
@@ -26,6 +27,24 @@ class Parent_bible(ABC):
     def read(self):
         # parses data from prepare()
         pass
+
+class sql_bible(Parent_bible):
+    # index for book names
+    def __init__(self, Parent_bible):
+        super().__init__(Parent_bible.book, Parent_bible.start_chapter, Parent_bible.start_verse, Parent_bible.end_chapter, Parent_bible.end_verse)
+    pass
+
+    def prepare(self):
+        # save output from sql to self.data after formatting
+        self.data = preparer2(self.book, self.start_chapter)
+    
+    def read(self):
+        # reads output from self.data
+        current_verse = self.start_verse
+        for verse in range((self.end_verse - self.start_verse)+1):
+            self.output += f"{current_verse}: {self.data[int(current_verse)-1]} \n"
+            current_verse+=1
+
 
 class webapi_bible(Parent_bible):
     def __init__(self, Parent_bible):
@@ -72,7 +91,12 @@ class version_creator:
     def __init__(self, parsed_passage):
         #condition to check which bible version is
         # test connection to api
-        self.bible_output =  webapi_bible(Parent_bible(parsed_passage[0][0], parsed_passage[0][1], parsed_passage[0][2], parsed_passage[0][3], parsed_passage[0][4]))
+        i = 0
+        
+        if i == 1:
+            self.bible_output =  webapi_bible(Parent_bible(parsed_passage[0][0], parsed_passage[0][1], parsed_passage[0][2], parsed_passage[0][3], parsed_passage[0][4]))
+        elif i == 0:
+            self.bible_output = sql_bible(Parent_bible(parsed_passage[0][0], parsed_passage[0][1], parsed_passage[0][2], parsed_passage[0][3], parsed_passage[0][4]))
         
 class Display():
     
